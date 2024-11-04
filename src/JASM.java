@@ -17,24 +17,28 @@ public class JASM extends JFrame
 	public static final int NASM_FORMAT = 1;
 	public static final int GCC_FORMAT = 2;
 
-	private String _hwNasmPrgm = "section .data\n"
-								  + "hw_msg db 'Hello world!', 0x0a, 0x00\n"
-								  + "hw_len equ $ - msg\n"
-								  + "\n"
-								  + "section .text\n"
-								  + "global _start\n"
-								  + "\n"
-								  + "_start:\n"
-								  + "mov rdx, hw_len\n"
-								  + "mov rcx, hw_msg\n"
-								  + "mov rbx, 1\n"
-								  + "mov rax, 4\n"
-								  + "int 0x80\n"
-								  + "\n"
-								  + "mov rax, 1\n"
-								  + "int 0x80\n";
+	private final String _hwNasmPrgm = """
+			section .data
+			hw_msg db 'Hello world!', 0x0a, 0x00
+			hw_len equ $ - hw_msg
+			
+			section .text
+			global _start
+			
+			_start:
+			mov rdx, hw_len
+			mov rcx, hw_msg
+			mov rbx, 1
+			mov rax, 4
+			int 0x80
+			
+			mov rax, 1
+			int 0x80
+			
+			""";
 
-	private String _hwGccPrgm = ""; // TODO
+	private final String _hwGccPrgm = """
+			"""; // TODO
 
 	private int _newCount = 1;
 
@@ -61,7 +65,7 @@ public class JASM extends JFrame
 			}
 		});
 
-		_tabs.addChangeListener(event -> {
+		_tabs.addChangeListener(_ -> {
 			_tabs.revalidate();
 			_tabs.repaint();
 		});
@@ -88,7 +92,7 @@ public class JASM extends JFrame
 
 		JMenuItem newBlankNasmMenuItem = new JMenuItem("Blank Template");
 		//loadMenuItem.setMnemonic(); TODO
-		newBlankNasmMenuItem.addActionListener(event -> {
+		newBlankNasmMenuItem.addActionListener(_ -> {
 			PrgmFrame prgm = new PrgmFrame(this, "", NASM_FORMAT);
 			addTab(prgm);
 		});
@@ -96,7 +100,7 @@ public class JASM extends JFrame
 
 		JMenuItem newHwNasmMenuItem = new JMenuItem("Hello World Template");
 		//loadMenuItem.setMnemonic(); TODO
-		newHwNasmMenuItem.addActionListener(event -> {
+		newHwNasmMenuItem.addActionListener(_ -> {
 			PrgmFrame prgm = new PrgmFrame(this, _hwNasmPrgm, NASM_FORMAT);
 			addTab(prgm);
 		});
@@ -108,7 +112,7 @@ public class JASM extends JFrame
 
 		JMenuItem newBlankGccMenuItem = new JMenuItem("Blank Template");
 		//loadMenuItem.setMnemonic(); TODO
-		newBlankGccMenuItem.addActionListener(event -> {
+		newBlankGccMenuItem.addActionListener(_ -> {
 			PrgmFrame prgm = new PrgmFrame(this, "", GCC_FORMAT);
 			addTab(prgm);
 		});
@@ -116,7 +120,7 @@ public class JASM extends JFrame
 
 		JMenuItem newHwGccMenuItem = new JMenuItem("Hello World Template");
 		//loadMenuItem.setMnemonic(); TODO
-		newHwGccMenuItem.addActionListener(event -> {
+		newHwGccMenuItem.addActionListener(_ -> {
 			PrgmFrame prgm = new PrgmFrame(this, _hwGccPrgm, GCC_FORMAT);
 			addTab(prgm);
 		});
@@ -129,7 +133,7 @@ public class JASM extends JFrame
 
 		JMenuItem loadMenuItem = new JMenuItem("Load Program");
 		//loadMenuItem.setMnemonic(); TODO
-		loadMenuItem.addActionListener(event -> Platform.runLater(() -> {
+		loadMenuItem.addActionListener(_ -> Platform.runLater(() -> {
 			FileChooser chooser = new FileChooser();
 			chooser.setTitle("Load x64 Program From File");
 			chooser.getExtensionFilters().addAll(
@@ -149,9 +153,7 @@ public class JASM extends JFrame
 
 		JMenuItem closeMenuItem = new JMenuItem("Close JASM");
 		//closeMenuItem.setMnemonic(); TODO
-		closeMenuItem.addActionListener(event -> {
-			exit();
-		});
+		closeMenuItem.addActionListener(_ -> exit());
 		mainMenu.add(closeMenuItem);
 
 		menuBar.add(mainMenu);
@@ -195,7 +197,8 @@ public class JASM extends JFrame
 
 	private boolean addTab(PrgmFrame prgm) {
 		try {
-			String name = prgm._fileName != null ? prgm._fileName : String.format("new %d", _newCount++);
+			String name = prgm._fileName != null ? prgm._fileName : String.format("new_%d", _newCount++);
+			prgm._fileName = name;
 			_tabs.addTab(name, prgm.getRootPane());
 			_prgms.put(prgm.getRootPane(), prgm);
 

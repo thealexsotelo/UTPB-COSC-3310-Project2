@@ -8,5 +8,7 @@ public class Label
 		_lineNum = line;
 	}
 
-
+	public int getLine() {
+		return _lineNum;
+	}
 }
