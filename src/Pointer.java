@@ -46,13 +46,17 @@ public class Pointer
 			case "equ" -> {
 				return String.format("0x%016x", getLong());
 			}
+			case "db" -> {return getString();}
+			case "dq" -> {return String.format("0x%016x", getLong());}
+			/*
 			case "db", "dw", "dd", "dq", "dt" -> {
 				if (_isLong) {
 					return String.format("0x%016x", getLong());
 				} else {
 					return getString();
 				}
-			}
+			}*/
+			/*
 			case "resb", "resw", "resd", "resq", "rest" -> {
 				StringBuilder out = new StringBuilder();
 				for (int i = 0; i < _size; i++) {
@@ -60,9 +64,13 @@ public class Pointer
 					out.append(String.format("0x%016x%n", bytesToLong(chunk)));
 				}
 				return out.toString();
-			}
+			}*/
 			default -> {return "";}
 		}
+	}
+
+	public String getType() {
+		return _type;
 	}
 
 	public boolean isLong() {

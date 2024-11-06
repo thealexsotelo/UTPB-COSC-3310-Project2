@@ -606,6 +606,8 @@ public class PrgmFrame extends JFrame
 		}).start();
 	}
 
+	//</editor-fold>
+
 	//<editor-fold desc="Ops">
 
 	private void nextLine() {
@@ -616,6 +618,10 @@ public class PrgmFrame extends JFrame
 			return;
 		}
 		String[] tokens = line.split(Pattern.quote(" "));
+		if (tokens[0].equals("label")) {
+			nextLine();
+			return;
+		}
 		switch (tokens[0]) {
 			case "mov" -> mov(tokens[1], tokens[2]);
 			case "add" -> add(tokens[1], tokens[2]);
@@ -635,13 +641,13 @@ public class PrgmFrame extends JFrame
 			case "ret" -> ret();
 			case "int" -> intr(0);
 			case "jmp" -> jmp(tokens[1]);
-			case "jeq" -> jeq(tokens[1]);
+			case "jeq", "je" -> jeq(tokens[1]);
 			case "jne" -> jne(tokens[1]);
 			case "jg" -> jg(tokens[1]);
 			case "jge" -> jge(tokens[1]);
 			case "jl" -> jl(tokens[1]);
 			case "jle" -> jle(tokens[1]);
-			default -> segFault();
+			default -> segFault(String.format("Opcode %s not recognized", tokens[0]));
 		}
 		showRegisters();
 	}
@@ -664,10 +670,10 @@ public class PrgmFrame extends JFrame
 				if (_pointers.get(ptr).isString()) {
 					return new Pointer("literal", "db", _pointers.get(ptr).charAt(0));
 				}
-				segFault();
+				segFault("Unrecognized pointer type");
 				return null;
 			}
-			segFault();
+			segFault(String.format("Attempted to dereference unknown pointer", ptr));
 			return null;
 		}
 		if (_pointers.containsKey(param)) {
@@ -680,7 +686,7 @@ public class PrgmFrame extends JFrame
 		if (intVal == null) {
 			Double fltVal = parseDouble(param);
 			if (fltVal == null) {
-				segFault();
+				segFault("Pointer value not parseable as either integer or float");
 				return null;
 			}
 			return new Pointer("literal", "dq", fltVal);
@@ -693,15 +699,18 @@ public class PrgmFrame extends JFrame
 			String ptr = getPtr(param);
 			if (_pointers.containsKey(ptr)) {
 				if (_pointers.get(ptr).isLong()) {
-					if (val.getName().equals("literal") && val.isLong()) {
+					//if (val.getName().equals("literal") && val.isLong()) {
+					if (val.isLong()) {
 						_pointers.get(ptr).setLong(val.getLong());
 						return;// true;
 					}
+					segFault("Attempted to set a non-integer value to an integer pointer");
+					return;// false;
 				}
-				segFault();
+				segFault("Attempted to set a long value to a non-integer pointer");
 				return;// false;
 			}
-			segFault();
+			segFault(String.format("Attempted to assign value to unknown pointer %s", ptr));
 			return;// false;
 		}
 		if (_pointers.containsKey(param)) {
@@ -712,13 +721,15 @@ public class PrgmFrame extends JFrame
 			_registers.put(param, val);
 			return;// true;
 		}
-		segFault();
+		segFault(String.format("Identifier %s not recognized as a valid register or pointer", param));
 		return;// false;
 	}
 
-	private void segFault() {
+	private void segFault(String errorMsg) {
 		_prgmOutput.append(String.format("Segmentation fault%n"));
+		_prgmOutput.append(String.format("%s%n", errorMsg));
 		_running = false;
+		_compiled = false;
 		_lineNumber = -1;
 	}
 
@@ -744,7 +755,7 @@ public class PrgmFrame extends JFrame
 		}
 
 		if (base.isString()) {
-			setValue(tgt, new Pointer(tgt, "db", base.subString((int)ptr.getLong())));
+			setValue(tgt, new Pointer(String.format("%s+%d", base.getName(), ptr.getLong()), "db", base.subString((int)ptr.getLong())));
 		}
 		if (base.isLong()) {
 			long l = base.getLong();
@@ -775,7 +786,7 @@ public class PrgmFrame extends JFrame
 
 	private void mul(String value) {
 		if (!value.equals("rbx")) {
-			segFault(); // mul only works if it's called on rbx for some reason?
+			segFault("The MUL opcode only accepts RBX as a valid parameter"); // mul only works if it's called on rbx for some reason?
 			return;
 		}
 		Pointer ptr = getValue(value);
@@ -794,7 +805,7 @@ public class PrgmFrame extends JFrame
 			return;
 		}
 		if (c.getLong() != 0L) {
-			segFault();
+			segFault("The value of RCX must be exactly 0x00 before calling MUL");
 			return;
 		}
 		Pointer d = getValue("rdx");
@@ -803,7 +814,7 @@ public class PrgmFrame extends JFrame
 			return;
 		}
 		if (d.getLong() != 0L) {
-			segFault();
+			segFault("The value of RDX must be exactly 0x00 before calling MUL");
 			return;
 		}
 
@@ -817,7 +828,7 @@ public class PrgmFrame extends JFrame
 
 	private void div(String value) {
 		if (!value.equals("rbx")) {
-			segFault(); // div only works if it's called on rbx for some reason?
+			segFault("The DIV opcode only accepts RBX as a valid parameter"); // div only works if it's called on rbx for some reason?
 			return;
 		}
 		Pointer ptr = getValue(value);
@@ -826,7 +837,7 @@ public class PrgmFrame extends JFrame
 			return;
 		}
 		if (ptr.getLong() == 0L) {
-			segFault(); // divide by 0 = segfault
+			segFault("The value of RBX must be exactly 0x00 before calling DIV"); // divide by 0 = segfault
 			return;
 		}
 		Pointer base = getValue("rax");
@@ -840,7 +851,7 @@ public class PrgmFrame extends JFrame
 			return;
 		}
 		if (c.getLong() != 0L) {
-			segFault();
+			segFault("The value of RCX must be exactly 0x00 before calling DIV");
 			return;
 		}
 		Pointer d = getValue("rdx");
@@ -849,7 +860,7 @@ public class PrgmFrame extends JFrame
 			return;
 		}
 		if (d.getLong() != 0L) {
-			segFault();
+			segFault("The value of RDX must be exactly 0x00 before calling DIV");
 			return;
 		}
 
@@ -966,6 +977,10 @@ public class PrgmFrame extends JFrame
 			return;
 		}
 		if (ptr.isLong()) {
+			if (ptr.getType().equals("line")) {
+				_stack.push(String.format("ptr@line%d", ptr.getLong()));
+				return;
+			}
 			_stack.push(String.format("0x%016x", ptr.getLong()));
 			return;
 		}
@@ -982,22 +997,32 @@ public class PrgmFrame extends JFrame
 		if (stackVal.startsWith("0x")) {
 			Integer l = parseInt(stackVal.substring(2));
 			if (l == null) {
-				segFault();
+				segFault(String.format("Failed to parse apparent integer value %s as valid integer", stackVal));
 				return;
 			}
 			setValue(tgt, new Pointer(tgt, "dq", l));
 			return;
 		}
+		if (stackVal.startsWith("ptr@line")) {
+			String ptr = stackVal.substring(8);
+			Integer l = parseInt(ptr);
+			if (l == null) {
+				segFault(String.format("Failed to parse apparent integer value %s as valid integer (should be a valid opcode/line)", ptr));
+				return;
+			}
+			setValue(tgt, new Pointer(tgt, "line", l));
+			return;
+		}
 		if (stackVal.startsWith("ptr@")) {
 			String ptr = stackVal.substring(4);
 			if (ptr == null || !_pointers.containsKey(ptr)) {
-				segFault();
+				segFault(String.format("Apparent pointer address %s does not reference a known pointer", ptr));
 				return;
 			}
 			setValue(tgt, new Pointer(ptr, "db", _pointers.get(ptr).getString()));
 			return;
 		}
-		segFault();
+		segFault(String.format("Unknown pointer type %s", stackVal));
 	}
 
 	private void call(String tgt) {
@@ -1010,13 +1035,13 @@ public class PrgmFrame extends JFrame
 		if (returnPtr.startsWith("ptr@line")) {
 			Integer line = parseInt(returnPtr.substring("ptr@line".length()));
 			if (line == null) {
-				segFault();
+				segFault(String.format("Failed to parse apparent integer value %s as valid integer (should be a valid opcode/line)", returnPtr));
 				return;
 			}
 			_lineNumber = line;
 			return;
 		}
-		segFault();
+		segFault(String.format("Attempted to return to non-line pointer %s", returnPtr));
 	}
 
 	private void intr(int value) {
@@ -1046,8 +1071,12 @@ public class PrgmFrame extends JFrame
 			{
 				return;
 			}
-			if (!_pointers.containsKey(c.getName())) {
-				segFault();
+			String cName = c.getName();
+			if (cName.contains("+")) {
+				cName = cName.substring(0, cName.indexOf("+"));
+			}
+			if (!_pointers.containsKey(cName)) {
+				segFault(String.format("Unknown pointer %s - RCX must contain a pointer/address of a character string", c.getName()));
 				return;
 			}
 			Pointer d = getValue("rdx");
@@ -1057,12 +1086,12 @@ public class PrgmFrame extends JFrame
 				return;
 			}
 			if (d.getLong() < 1) {
-				segFault();
+				segFault("RDX must contain an integer literal number of characters to print");
 				return;
 			}
 			if (b.getLong() == 1L) {
 				int strLen = (int)d.getLong();
-				_prgmOutput.append(_pointers.get(c.getName()).getString().substring(0, strLen));
+				_prgmOutput.append(_registers.get("rcx").getString().substring(0, strLen).replace(String.format("%s", (char)0x00), ""));
 			}
 			setValue("rax", new Pointer("??", "db", "??"));
 			setValue("rbx", new Pointer("??", "db", "??"));
@@ -1070,7 +1099,7 @@ public class PrgmFrame extends JFrame
 			setValue("rdx", new Pointer("??", "db", "??"));
 			return;
 		}
-		segFault();
+		segFault(String.format("Unknown interrupt code %d - RAX must contain either 0x01 (system exit) or 0x04 (print)", a.getLong()));
 	}
 
 	private void cmp(String tgt, String value) {
@@ -1095,7 +1124,7 @@ public class PrgmFrame extends JFrame
 			_lineNumber = _labels.get(tgt).getLine();
 			return;
 		}
-		segFault();
+		segFault(String.format("Could not identify valid label %s", tgt));
 	}
 
 	private void jeq(String tgt) {
@@ -1105,7 +1134,7 @@ public class PrgmFrame extends JFrame
 			}
 			return;
 		}
-		segFault();
+		segFault(String.format("Could not identify valid label %s", tgt));
 	}
 
 	private void jg(String tgt) {
@@ -1115,7 +1144,7 @@ public class PrgmFrame extends JFrame
 			}
 			return;
 		}
-		segFault();
+		segFault(String.format("Could not identify valid label %s", tgt));
 	}
 
 	private void jge(String tgt) {
@@ -1125,7 +1154,7 @@ public class PrgmFrame extends JFrame
 			}
 			return;
 		}
-		segFault();
+		segFault(String.format("Could not identify valid label %s", tgt));
 	}
 
 	private void jne(String tgt) {
@@ -1135,7 +1164,7 @@ public class PrgmFrame extends JFrame
 			}
 			return;
 		}
-		segFault();
+		segFault(String.format("Could not identify valid label %s", tgt));
 	}
 
 	private void jl(String tgt) {
@@ -1145,7 +1174,7 @@ public class PrgmFrame extends JFrame
 			}
 			return;
 		}
-		segFault();
+		segFault(String.format("Could not identify valid label %s", tgt));
 	}
 
 	private void jle(String tgt) {
@@ -1155,10 +1184,12 @@ public class PrgmFrame extends JFrame
 			}
 			return;
 		}
-		segFault();
+		segFault(String.format("Could not identify valid label %s", tgt));
 	}
 
 	//</editor-fold>
+
+	//<editor-fold desc="Compile">
 
 	private boolean compile() {
 		String code = _userProgram.getText().toLowerCase();
@@ -1173,7 +1204,7 @@ public class PrgmFrame extends JFrame
 		boolean labelStart = false;
 
 		for (int lineNum = 0; lineNum < lines.length; lineNum++) {
-			String line = lines[lineNum];
+			String line = lines[lineNum].trim();
 			if (line.isBlank()) {
 				continue;
 			}
@@ -1217,18 +1248,23 @@ public class PrgmFrame extends JFrame
 						if (tokens[2].equals("equ")) {
 							break;
 						}
-						try
-						{
-							int ptrVal = Integer.parseInt(tokens[3]);
-							_pointers.put(tokens[1], new Pointer(tokens[1], tokens[2], ptrVal));
-						}
-						catch (NumberFormatException nfEx)
-						{
+						if (tokens[2].equals("db")) {
 							StringBuilder ptrVal = new StringBuilder();
 							for (int i = 3; i < tokens.length; i++) {
 								ptrVal.append(tokens[i]).append(" ");
 							}
 							_pointers.put(tokens[1], new Pointer(tokens[1], tokens[2], ptrVal.toString()));
+						}
+						if (tokens[2].equals("dq")) {
+							try
+							{
+								int ptrVal = Integer.parseInt(tokens[3]);
+								_pointers.put(tokens[1], new Pointer(tokens[1], tokens[2], ptrVal));
+							}
+							catch (NumberFormatException nfEx)
+							{
+
+							}
 						}
 					}
 				}
@@ -1252,7 +1288,7 @@ public class PrgmFrame extends JFrame
 		_lines = new String[lines.length];
 
 		for (int lineNum = 0; lineNum < lines.length; lineNum++) {
-			String line = lines[lineNum];
+			String line = lines[lineNum].trim();
 			if (line.isBlank()) {
 				_lines[lineNum] = null;
 				continue;
@@ -1261,6 +1297,10 @@ public class PrgmFrame extends JFrame
 			_lines[lineNum] = cleanOp;
 			String[] tokens = cleanOp.split(Pattern.quote(" "));
 			switch (tokens[0]) {
+				case "Error" -> {
+					_prgmOutput.append(String.format("%s%n", cleanOp));
+					compileSuccess = false;
+				}
 				case "ptr" -> {
 					if (tokens[2].equals("equ")) {
 						String param1 = tokens[3];
@@ -1341,7 +1381,7 @@ public class PrgmFrame extends JFrame
 						compileSuccess = false;
 					}
 				}
-				case "call", "jmp", "jeq", "jne", "jge", "jg", "jle", "jl" -> {
+				case "call", "jmp", "jeq", "je", "jne", "jge", "jg", "jle", "jl" -> {
 					String param1 = tokens[1];
 					if (!_labels.containsKey(param1)) {
 						_prgmOutput.append(String.format("Error line %d: Code label %s not found%n", lineNum, param1));
@@ -1382,6 +1422,14 @@ public class PrgmFrame extends JFrame
 		}
 	}
 
+	private Character parseChar(String param) {
+		Integer intVal = parseInt(param);
+		if (intVal == null) {
+			return null;
+		}
+		return (char)intVal.intValue();
+	}
+
 	private String parseLine(String line, int lineNum) {
 		String[] tokens = line.split("\\s+");
 		try
@@ -1403,7 +1451,7 @@ public class PrgmFrame extends JFrame
 					}
 				}
 				case "mov", "add", "sub", "and", "or", "xor", "cmp" -> {return twoParamOp(tokens[0], tokens, lineNum);}
-				case "mul", "div", "inc", "dec", "not", "push", "pop", "call", "int", "jmp", "jeq", "jne", "jge", "jg", "jle", "jl" -> {return oneParamOp(tokens[0], tokens, lineNum);}
+				case "mul", "div", "inc", "dec", "not", "push", "pop", "call", "int", "jmp", "jeq", "je", "jne", "jge", "jg", "jle", "jl" -> {return oneParamOp(tokens[0], tokens, lineNum);}
 				case "ret" -> {return noParamOp(tokens[0], tokens, lineNum);}
 				default -> {
 					if (tokens[0].endsWith(":")) {
@@ -1447,12 +1495,19 @@ public class PrgmFrame extends JFrame
 		boolean isString = false;
 		for (String token : tokens)
 		{
-			token = token.trim();
-			if (token.startsWith("\"") || token.startsWith("'")) {
+			String trimmed = token.trim();
+			if (trimmed.startsWith("\"") || trimmed.startsWith("'")) {
 				isString = true;
 				if (!type.equals("db"))
 				{
 					return String.format("Error line %d: Type mismatch (strings must be type db)", lineNum);
+				}
+				continue;
+			}
+			if (type.equals("db")) {
+				char c = parseChar(trimmed);
+				switch (c) {
+					case 0x0a, 0x0d, 0x00 -> isString = true;
 				}
 			}
 		}
@@ -1466,23 +1521,23 @@ public class PrgmFrame extends JFrame
 		}
 
 		for (String token : tokens) {
-			token = token.trim();
-			if (token.startsWith("\"")) {
-				token = token.substring(1, token.lastIndexOf('"'));
-				ptrVal.append(token);
+			String trimmed = token.trim();
+			if (trimmed.startsWith("\"")) {
+				trimmed = trimmed.substring(1, trimmed.lastIndexOf('"'));
+				ptrVal.append(trimmed);
 				continue;
 			}
-			if (token.startsWith("'")) {
-				token = token.substring(1, token.lastIndexOf('\''));
-				ptrVal.append(token);
+			if (trimmed.startsWith("'")) {
+				trimmed = trimmed.substring(1, trimmed.lastIndexOf('\''));
+				ptrVal.append(trimmed);
 				continue;
 			}
-			Integer intVal = parseInt(token);
+			Integer intVal = parseInt(trimmed);
 			if (intVal == null) {
 				if (isString) {
 					return String.format("Error line %d: Unknown char/string value %s", lineNum, token);
 				}
-				Double floatVal = parseDouble(token);
+				Double floatVal = parseDouble(trimmed);
 				if (floatVal == null) {
 					return String.format("Error line %d: Unable to parse %s as valid data", lineNum, token);
 				}
@@ -1490,9 +1545,9 @@ public class PrgmFrame extends JFrame
 				continue;
 			}
 			if (isString) {
-				/*if (intVal == 0x00) {
+				if (intVal == 0x00) {
 					continue;
-				}*/
+				}
 				ptrVal.append((char)intVal.intValue());
 				continue;
 			}
