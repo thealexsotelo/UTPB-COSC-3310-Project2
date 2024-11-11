@@ -258,9 +258,9 @@ public class PrgmFrame extends JFrame
 		gbc.fill = GridBagConstraints.BOTH;
 		gbc.gridx = 0;
 		gbc.gridy = 0;
-		gbc.gridwidth = 1;
+		gbc.gridwidth = 9;
 		gbc.gridheight = 1;
-		gbc.weightx = 0.2;
+		gbc.weightx = 0.3;
 		gbc.weighty = 1.0;
 
 		//<editor-fold desc="Control Panel">
@@ -316,8 +316,11 @@ public class PrgmFrame extends JFrame
 
 		//</editor-fold>
 
-		gbc.gridx = 1;
-		gbc.weightx = 0.05;
+		// <editor-fold desc="Code Panel">
+
+		gbc.gridx = 9;
+		gbc.gridwidth = 1;
+		gbc.weightx = 0.01;
 		_userProgramLines = new JTextArea();
 		_userProgramLines.setLineWrap(false);
 		_userProgramLines.setEditable(false);
@@ -327,8 +330,9 @@ public class PrgmFrame extends JFrame
 		lineScroll.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_NEVER);
 		add(lineScroll, gbc);
 
-		gbc.gridx = 2;
-		gbc.weightx = 0.2;
+		gbc.gridx = 10;
+		gbc.gridwidth = 10;
+		gbc.weightx = 1.0;
 		_userProgram = new JTextArea();
 		_userProgram.setLineWrap(false);
 		_userProgram.setEditable(true);
@@ -364,15 +368,21 @@ public class PrgmFrame extends JFrame
 		lineScroll.getVerticalScrollBar().addAdjustmentListener(_ -> prgmScroll.getVerticalScrollBar().setValue(lineScroll.getVerticalScrollBar().getValue()));
 		prgmScroll.getVerticalScrollBar().addAdjustmentListener(_ -> lineScroll.getVerticalScrollBar().setValue(prgmScroll.getVerticalScrollBar().getValue()));
 
+		// </editor-fold>
+
 		updateLines();
 
-		gbc.gridx = 3;
-		gbc.weightx = 0.3;
+		// <editor-fold desc="Output Panel">
+
+		gbc.gridx = 20;
+		gbc.weightx = 1.0;
 		_prgmOutput = new JTextArea();
 		_prgmOutput.setLineWrap(false);
 		_prgmOutput.setEditable(false);
 		_prgmOutput.setHighlighter(_prgmHl);
 		add(scrollTextArea(_prgmOutput), gbc);
+
+		// </editor-fold>
 
 		setFont("Courier New", 24);
 		showRegisters();
@@ -995,7 +1005,7 @@ public class PrgmFrame extends JFrame
 		}
 		String stackVal = _stack.pop();
 		if (stackVal.startsWith("0x")) {
-			Integer l = parseInt(stackVal.substring(2));
+			Integer l = parseInt(stackVal);
 			if (l == null) {
 				segFault(String.format("Failed to parse apparent integer value %s as valid integer", stackVal));
 				return;

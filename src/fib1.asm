@@ -1,4 +1,4 @@
-; This file contains a version of the fibonacci code which uses function calls to handle printing characters, and is formatted to work within the JASM interpreter (no QWORD)
+; This file contains a version of the fibonacci code which uses function calls to handle printing characters, and is formatted to work in a real linux compiler (with QWORD)
 
 section .data
 newline db 0x0a, 0x00
@@ -23,23 +23,23 @@ call fn_print_number
 call fn_print_number
 
 loop_head:
-mov r10, [iter]
-cmp [count], r10
+mov r10, QWORD [iter]
+cmp QWORD [count], r10
 jge loop_exit
 
 loop_body:
-mov r10, [num0]
-mov [num2], r10
-mov r10, [num1]
-add [num0], r10
-mov r10, [num2]
-mov [num1], r10
+mov r10, QWORD [num0]
+mov QWORD [num2], r10
+mov r10, QWORD [num1]
+add QWORD [num0], r10
+mov r10, QWORD [num2]
+mov QWORD [num1], r10
 
-push [num0]
+push QWORD [num0]
 call fn_print_number
 
 loop_tail:
-add [count], 1
+add QWORD [count], 1
 jmp loop_head
 
 loop_exit:

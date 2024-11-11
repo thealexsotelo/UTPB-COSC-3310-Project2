@@ -1,50 +1,60 @@
-; This file contains a version of the fibonacci code which uses function calls to handle printing characters, and is formatted to work within the JASM interpreter (no QWORD)
+; This file contains a version of the fibonacci code which uses recursion, and is formatted to work within a real linux compiler (with QWORD)
 
-section .data
+section .data:
 newline db 0x0a, 0x00
 nl_len equ $ - newline
 nums db '0123456789'
-num0 dq 1
-num1 dq 1
-num2 dq 1
-count dq 2
-iter dq 10
+iter dq 15
 
 section .text
 global _start
 
 _start:
+        push 1
+        push 1
+        push QWORD [iter]
+        call fn_fib
 
-init:
-mov rax, 1
-push rax
-push rax
-call fn_print_number
-call fn_print_number
+        mov rax, 1
+        int 0x80
 
-loop_head:
-mov r10, [iter]
-cmp [count], r10
-jge loop_exit
 
-loop_body:
-mov r10, [num0]
-mov [num2], r10
-mov r10, [num1]
-add [num0], r10
-mov r10, [num2]
-mov [num1], r10
+fn_fib:
+	pop rdx
+        pop rcx
+        pop rbx
+        pop rax
+        push rdx
 
-push [num0]
-call fn_print_number
+        cmp rcx, 0
+        jle fn_exit
 
-loop_tail:
-add [count], 1
-jmp loop_head
+        push rax
+        push rbx
+        push rcx
+        push rax
+        call fn_print_number
 
-loop_exit:
-mov rax, 1
-int 0x80
+        pop rcx
+        pop rbx
+        pop rax
+        sub rcx, 1
+        add rax, rbx
+        push rbx
+        push rax
+        push rcx
+        call fn_fib
+
+        fn_exit:
+        ret
+
+fn_print_nl:
+	mov rdx, nl_len
+	mov rcx, newline
+	mov rbx, 1
+	mov rax, 4
+	int 0x80
+	ret
 
 fn_print_digit:
 	pop rax
@@ -67,11 +77,7 @@ fn_print_number:
 	jge decomp
 	call fn_print_digit
 
-	mov rdx, nl_len
-	mov rcx, newline
-	mov rbx, 1
-	mov rax, 4
-	int 0x80
+	call fn_print_nl
 	ret
 	decomp:
 		decomp_loop_init:
@@ -102,9 +108,5 @@ fn_print_number:
 				sub r13, 1
 				jmp decomp_print_loop_head
 			decomp_print_loop_exit:
-				mov rdx, nl_len
-				mov rcx, newline
-				mov rbx, 1
-				mov rax, 4
-				int 0x80
+				call fn_print_nl
 				ret
